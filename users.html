@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accounts - Partner Directory</title><link rel="icon" type="image/png" href="icon.png">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("pd_theme")||"dark"}catch(e){}</script>
+<style>
+:root{--bg:#0f0f11;--card:#17171a;--inp:#121214;--bd:#28282d;--tx:#f4f4f5;--mut:#8c8c94;--acc:#3b6ef5;--ok:#34d399;color-scheme:dark}
+:root[data-theme=light]{--bg:#f5f5f7;--card:#fff;--inp:#fff;--bd:#e4e4ea;--tx:#18181b;--mut:#71717a;--acc:#2f5fe3;--ok:#16a34a;color-scheme:light}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--tx)}
+main{max-width:760px;margin:0 auto;padding:28px 18px}h1{font-size:20px;margin:0 0 4px}a{color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-top:16px}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:8px 6px;border-bottom:1px solid var(--bd)}th{color:var(--mut);font-weight:500;font-size:12px}
+input,select{background:var(--inp);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;color:var(--tx);width:100%}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px}label{font-size:12px;color:var(--mut);display:block;margin:0 0 3px}
+button{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer}button.s{background:transparent;color:var(--tx);border:1px solid var(--bd);padding:4px 10px;font-size:12px}
+.msg{min-height:20px;margin-top:8px;color:#c0392b}.msg.ok{color:var(--ok)}
+</style></head><body><main>
+<a href="/">&larr; Back to Partner Directory</a>
+<h1 style="margin-top:12px">Accounts</h1><div style="color:var(--mut)">Add team members and reset passwords. Only admins can see this page.</div>
+<div class="card"><table><thead><tr><th>Email</th><th>Name</th><th>Role</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="card"><b>Add account</b>
+<div class="g" style="margin-top:10px"><div><label>Email</label><input id="e" type="email"></div><div><label>Name (as in the team list, optional)</label><input id="n"></div>
+<div><label>Password (min 8 characters)</label><input id="p" type="text" autocomplete="off"></div>
+<div><label>Role</label><select id="r"><option value="member">Member</option><option value="admin">Admin</option></select></div></div>
+<div style="margin-top:12px"><button id="add">Add account</button></div><div class="msg" id="m"></div></div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+async function api(m,b,q=''){const r=await fetch('/api/users'+q,{method:m,headers:{'x-requested-with':'pd','content-type':'application/json'},body:b?JSON.stringify(b):undefined,credentials:'same-origin'});
+ const j=await r.json().catch(()=>({}));if(r.status===401){location.href='/';throw new Error('Signed out')}if(!r.ok)throw new Error(j.error||'Failed');return j}
+const msg=(t,ok)=>{const m=$('#m');m.textContent=t;m.className='msg'+(ok?' ok':'')};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function load(){try{const{users}=await api('GET');
+ $('#rows').innerHTML=users.map(u=>`<tr><td>${esc(u.email)}</td><td>${esc(u.name)}</td><td>${u.role}</td><td style="text-align:right;white-space:nowrap"><button class="s" data-pw="${u.id}">Reset password</button> <button class="s" data-del="${u.id}">Delete</button></td></tr>`).join('')}
+ catch(e){location.href='/'}}
+$('#add').onclick=async()=>{try{await api('POST',{email:$('#e').value,name:$('#n').value,password:$('#p').value,role:$('#r').value});
+ ['#e','#n','#p'].forEach(i=>$(i).value='');msg('Account added.',true);load()}catch(e){msg(e.message)}};
+$('#rows').onclick=async e=>{const t=e.target;
+ if(t.dataset.pw){const p=prompt('New password (min 8 characters):');if(p){try{await api('PUT',{id:t.dataset.pw,password:p});msg('Password changed.',true)}catch(x){msg(x.message)}}}
+ if(t.dataset.del&&confirm('Delete this account?')){try{await api('DELETE',null,'?id='+t.dataset.del);load()}catch(x){msg(x.message)}}};
+load();
+</script></body></html>
